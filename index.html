@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171923">
+<meta name="description" content="Личный трекер привычек">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Мои привычки</title>
+<style>
+:root{color-scheme:dark;--bg:#101116;--panel:#1a1c25;--panel2:#242733;--text:#f5f5f7;--muted:#b4b6c3;--line:#343744;--accent:#dfe3ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:620px;margin:auto;padding:22px 16px 40px}.top{display:flex;align-items:center;gap:12px;margin-bottom:8px}.logo{width:48px;height:48px;border-radius:16px;background:var(--panel2);display:grid;place-items:center;font-size:25px}
+h1{font-size:25px;margin:0}p{color:var(--muted);margin:7px 0 18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.day{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 0;border-radius:12px;font-weight:650}.day.active{background:var(--accent);color:#171923;border-color:var(--accent)}
+.progressrow{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px}.bar{height:8px;background:#333644;border-radius:20px;overflow:hidden}.fill{height:100%;width:0;background:var(--accent);transition:width .2s}
+h2{font-size:17px;margin:20px 0 10px}.habit{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.habit:last-child{border-bottom:0}.habit input{width:22px;height:22px;margin:1px 0 0;accent-color:#dfe3ff;flex-shrink:0}.habit label{flex:1}.habit small{display:block;color:var(--muted);margin-top:3px}
+button{font:inherit;cursor:pointer}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.secondary{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 13px;border-radius:12px}.primary{border:0;background:var(--accent);color:#171923;padding:11px 15px;border-radius:12px;font-weight:700}.note{font-size:12px;color:var(--muted);margin-top:12px}.summary{font-size:14px;color:var(--muted)}.summary strong{color:var(--text)}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="logo">📈</div><div><h1>Мои привычки</h1><div class="summary">Маленькие шаги каждый день</div></div></div>
+  <p>Отмечай минимум — это уже прогресс. Отметки сохраняются на этом устройстве.</p>
+  <section class="card">
+    <strong>День недели</strong>
+    <div class="days" id="days" style="margin-top:12px"></div>
+    <div class="progressrow"><strong>Прогресс за день</strong><strong id="count">0 из 8 · 0%</strong></div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="summary" id="encouragement" style="margin-top:10px">Начни с одной маленькой привычки.</div>
+  </section>
+  <section class="card" id="habitCard">
+    <h2 style="margin-top:0">Основа</h2>
+    <div id="baseHabits"></div>
+    <h2>Навыки</h2>
+    <div id="skillHabits"></div>
+    <div class="actions">
+      <button class="primary" id="copy">Скопировать отметки</button>
+      <button class="secondary" id="reset">Снять все отметки за день</button>
+    </div>
+    <div class="note">Данные хранятся в памяти браузера на этом устройстве. Не очищай данные браузера, если хочешь сохранить историю.</div>
+  </section>
+  <section class="card">
+    <strong>Небольшое напоминание</strong>
+    <p style="margin-bottom:0">Не нужно выполнять всё идеально. Если день выдался тяжёлым, выбери минимальную версию привычки и возвращайся к плану завтра.</p>
+  </section>
+</main>
+<script>
+const habits=[
+{id:"sleep",name:"Соблюдал режим сна",group:"base",desc:"Ложился вовремя и дал себе достаточно сна"},
+{id:"breaks",name:"Делал перерывы во время занятий",group:"base",desc:"Коротко отдыхал между блоками работы"},
+{id:"plan",name:"Запланировал главное дело на завтра",group:"base",desc:"Записал одну важную задачу"},
+{id:"steno",name:"Стенография — минимум 5 минут",group:"skill",desc:"Повторил знаки или сделал короткую запись"},
+{id:"russian",name:"Русский язык — минимум 5 минут",group:"skill",desc:"Правило, чтение вслух или пересказ"},
+{id:"english",name:"Английский — минимум 5 минут",group:"skill",desc:"Слова, перевод или одно грамматическое правило"},
+{id:"typing",name:"Слепая печать — минимум 5 минут",group:"skill",desc:"Тренировал точность и правильную постановку пальцев"},
+{id:"piano",name:"Пианино — минимум 5 минут",group:"skill",desc:"Ноты, ритм или чтение с листа"}
+];
+const dayNames=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const storageKey="moiPrivychkiDataV1";
+let data={};try{data=JSON.parse(localStorage.getItem(storageKey)||"{}")}catch(e){}
+const today=new Date();let selectedDay=(today.getDay()+6)%7;
+function dateKey(day){const d=new Date();const offset=((d.getDay()+6)%7);d.setDate(d.getDate()-offset+day);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function getChecks(){return data[dateKey(selectedDay)]||[]}
+function save(){localStorage.setItem(storageKey,JSON.stringify(data))}
+function renderDays(){const root=document.getElementById("days");root.innerHTML="";dayNames.forEach((n,i)=>{const b=document.createElement("button");b.className="day"+(i===selectedDay?" active":"");b.textContent=n;b.setAttribute("aria-label",n);b.onclick=()=>{selectedDay=i;render()};root.appendChild(b)})}
+function renderHabitGroup(group,id){const root=document.getElementById(id);root.innerHTML="";const checks=getChecks();habits.filter(h=>h.group===group).forEach(h=>{const row=document.createElement("div");row.className="habit";const input=document.createElement("input");input.type="checkbox";input.id=h.id;input.checked=checks.includes(h.id);input.onchange=()=>{let c=getChecks();c=input.checked?[...new Set([...c,h.id])]:c.filter(x=>x!==h.id);data[dateKey(selectedDay)]=c;save();render()};const label=document.createElement("label");label.htmlFor=h.id;label.textContent=h.name;const small=document.createElement("small");small.textContent=h.desc;label.appendChild(small);row.append(input,label);root.appendChild(row)})}
+function render(){renderDays();renderHabitGroup("base","baseHabits");renderHabitGroup("skill","skillHabits");const c=getChecks().length;document.getElementById("count").textContent=`${c} из ${habits.length} · ${Math.round(c/habits.length*100)}%`;document.getElementById("fill").style.width=(c/habits.length*100)+"%";document.getElementById("encouragement").textContent=c===0?"Начни с одной маленькой привычки.":c===habits.length?"Отлично! Ты отметил все привычки на этот день.":"Хороший шаг. Продолжай в своём темпе."}
+document.getElementById("copy").onclick=async()=>{const title=`Мои привычки — ${dayNames[selectedDay]}`;const checks=getChecks();const content=title+"\n"+habits.map(h=>(checks.includes(h.id)?"[x] ":"[ ] ")+h.name).join("\n");try{await navigator.clipboard.writeText(content);alert("Отметки скопированы.")}catch(e){prompt("Скопируй текст:",content)}};
+document.getElementById("reset").onclick=()=>{if(confirm("Снять все отметки только за выбранный день?")){data[dateKey(selectedDay)]=[];save();render()}};
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
+render();
+</script>
+</body></html>
